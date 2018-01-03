@@ -715,6 +715,11 @@ test_scala_import_library_passes_labels_of_direct_deps() {
   test_scala_library_expect_failure_on_missing_direct_deps $dependency_target $test_target
 }
 
+test_scala_classpath_resources_expect_failure_on_namespace_conflict(){
+  action_should_fail_with_message \
+    "Classpath resource file classpath-resourcehas a namespace conflict with another file: classpath-resource" \
+    build --verbose_failures //test_expect_failure/classpath_resources:classpath_resource_duplicates
+}
 
 dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 # shellcheck source=./test_runner.sh
@@ -788,6 +793,8 @@ $runner test_scala_import_expect_failure_on_missing_direct_deps_warn_mode
 $runner bazel build "test_expect_failure/missing_direct_deps/internal_deps/... --strict_java_deps=warn"
 $runner test_scalaopts_from_scala_toolchain
 $runner test_scala_import_library_passes_labels_of_direct_deps
+$runner bazel run test/src/main/scala/scala/test/classpath_resources:classpath_resource
+$runner test_scala_classpath_resources_expect_failure_on_namespace_conflict
 
 # This test is last since it compares the current outputs to new ones to make sure they're identical
 # If it runs before some of the above (like jmh) the "current" output in CI might be too close in time to the "new" one

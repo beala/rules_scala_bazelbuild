@@ -161,6 +161,9 @@ def _compile(ctx, cjars, dep_srcjars, buildijar, transitive_compile_jars, labels
     dependency_analyzer_mode = "off"
     compiler_classpath_jars = cjars
     optional_scalac_args = ""
+    classpath_resources = []
+    if (hasattr(ctx.files, "classpath_resources")):
+      classpath_resources = ctx.files.classpath_resources
 
     if is_dependency_analyzer_on(ctx):
     # "off" mode is used as a feature toggle, that preserves original behaviour
@@ -196,6 +199,7 @@ CurrentTarget: {current_target}
 
     scalac_args = """
 Classpath: {cp}
+ClasspathResourceSrcs: {classpath_resource_src}
 EnableIjar: {enableijar}
 Files: {files}
 IjarCmdPath: {ijar_cmd_path}
@@ -221,6 +225,7 @@ StatsfileOutput: {statsfile_output}
         print_compile_time=ctx.attr.print_compile_time,
         plugin_arg=plugin_arg,
         cp=compiler_classpath,
+        classpath_resource_src=",".join([f.path for f in classpath_resources]),
         files=",".join([f.path for f in sources]),
         enableijar=buildijar,
         ijar_out=ijar_output_path,
@@ -254,6 +259,7 @@ StatsfileOutput: {statsfile_output}
            ctx.files.srcs +
            ctx.files.plugins +
            dependency_analyzer_plugin_jars +
+           classpath_resources +
            ctx.files.resources +
            ctx.files.resource_jars +
            ctx.files._java_runtime +
@@ -1030,6 +1036,7 @@ scala_macro_library = rule(
 
 _scala_binary_attrs = {
     "main_class": attr.string(mandatory=True),
+    "classpath_resources": attr.label_list(allow_files=True),
 }
 _scala_binary_attrs.update(_launcher_template)
 _scala_binary_attrs.update(_implicit_deps)

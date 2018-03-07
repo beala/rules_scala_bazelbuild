@@ -164,18 +164,21 @@ def _compile(ctx, cjars, dep_srcjars, buildijar, transitive_compile_jars, labels
         compiler_classpath_jars = transitive_compile_jars
 
         direct_jars = _join_path(cjars.to_list())
+        direct_targets = _join_path(cjars.to_list())
         transitive_cjars_list = transitive_compile_jars.to_list()
         indirect_jars = _join_path(transitive_cjars_list)
-        indirect_targets = ",".join([labels[j.path] for j in transitive_cjars_list])
+        indirect_targets = _join_path(transitive_cjars_list)
         current_target = str(ctx.label)
 
         optional_scalac_args = """
 DirectJars: {direct_jars}
+DirectTargets: {direct_targets}
 IndirectJars: {indirect_jars}
 IndirectTargets: {indirect_targets}
 CurrentTarget: {current_target}
         """.format(
               direct_jars=direct_jars,
+              direct_targets=direct_targets,
               indirect_jars=indirect_jars,
               indirect_targets=indirect_targets,
               current_target = current_target

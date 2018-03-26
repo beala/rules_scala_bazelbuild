@@ -163,6 +163,9 @@ def _compile(ctx, cjars, dep_srcjars, buildijar, transitive_compile_jars, labels
         dependency_analyzer_plugin_jars = ctx.files._dependency_analyzer_plugin
         compiler_classpath_jars = transitive_compile_jars
 
+        unused_deps_whitelist = _join_path(ctx.attr.unused_deps_whitelist)
+        dep_jars = _join_path(foo)
+        dep_targets = _join_path(foo)
         direct_jars = _join_path(cjars.to_list())
         direct_targets = _join_path(cjars.to_list())
         transitive_cjars_list = transitive_compile_jars.to_list()
@@ -171,12 +174,18 @@ def _compile(ctx, cjars, dep_srcjars, buildijar, transitive_compile_jars, labels
         current_target = str(ctx.label)
 
         optional_scalac_args = """
+UnusedDepsWhitelist: {unused_deps_whitelist}
+DepJars: {dep_jars}
+DepTargets: {dep_targets}
 DirectJars: {direct_jars}
 DirectTargets: {direct_targets}
 IndirectJars: {indirect_jars}
 IndirectTargets: {indirect_targets}
 CurrentTarget: {current_target}
         """.format(
+              unused_deps_whitelist=unused_deps_whitelist,
+              deps_jars=dep_jars,
+              dep_targets=dep_targets,
               direct_jars=direct_jars,
               direct_targets=direct_targets,
               indirect_jars=indirect_jars,
@@ -967,6 +976,7 @@ _common_attrs_for_plugin_bootstrapping = {
   "srcs": attr.label_list(
       allow_files=_scala_srcjar_filetype),
   "deps": attr.label_list(),
+  "unused_deps_whitelist": attr.label_list(),
   "plugins": attr.label_list(allow_files=_jar_filetype),
   "runtime_deps": attr.label_list(),
   "data": attr.label_list(allow_files=True, cfg="data"),

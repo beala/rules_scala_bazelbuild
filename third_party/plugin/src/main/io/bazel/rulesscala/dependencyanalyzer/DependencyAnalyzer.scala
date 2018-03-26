@@ -1,13 +1,14 @@
 package third_party.plugin.src.main.io.bazel.rulesscala.dependencyanalyzer
 
-import scala.reflect.io.AbstractFile
-import scala.tools.nsc.plugins.{Plugin, PluginComponent}
-import scala.tools.nsc.{Global, Phase}
-import scala.Console._
 import java.io.File
 import java.net.URI
-import scala.tools.nsc.Settings
+import java.nio.file.Paths
+import scala.Console._
+import scala.reflect.io.AbstractFile
 import scala.tools.nsc.classpath.FlatClassPathFactory
+import scala.tools.nsc.plugins.{Plugin, PluginComponent}
+import scala.tools.nsc.Settings
+import scala.tools.nsc.{Global, Phase}
 
 class DependencyAnalyzer(val global: Global) extends Plugin {
 
@@ -71,10 +72,12 @@ class DependencyAnalyzer(val global: Global) extends Plugin {
           directJar <- direct.keys if !usedJarPaths.contains(directJar)
           target <- direct.get(directJar)
         } {
+          val jarFileName = Paths.get(directJar).getFileName
           // TODO: Can we get the correct jar label here?
           val errorMessage =
-            s"""${currentTarget} depends on '${target}' which depends on '${directJar}'.
-               |${RESET}${GREEN}${directJar} is not used by ${currentTarget}. Please remove it from the deps.${RESET}""".stripMargin
+            s"""${RESET}${MAGENTA}${currentTarget} depends on '${target}' which depends on '${jarFileName}', but is not used.${RESET}
+               |You can use the following buildozer command to remove it:
+               |buildozer 'remove deps ${target}' ${currentTarget}""".stripMargin
 
           analyzerMode match {
             case "error" => reporter.error(NoPosition, errorMessage)
@@ -88,9 +91,9 @@ class DependencyAnalyzer(val global: Global) extends Plugin {
              usedJarPath = usedJar.path;
              target <- indirect.get(usedJarPath) if !direct.contains(usedJarPath)) {
           val errorMessage =
-            s"""Target '${target}' is used but isn't explicitly declared, please add it to the deps.
+            s"""${RESET}${MAGENTA}Target '${target}' is used but isn't explicitly declared, please add it to the deps.${RESET}
                |You can use the following buildozer command:
-               |${RESET}${GREEN}buildozer 'add deps ${target}' ${currentTarget}${RESET}""".stripMargin
+               |buildozer 'add deps ${target}' ${currentTarget}""".stripMargin
 
           analyzerMode match {
             case "error" => reporter.error(NoPosition, errorMessage)
@@ -117,6 +120,7 @@ class DependencyAnalyzer(val global: Global) extends Plugin {
         if (sym.hasPackageFlag && !sym.isModuleClass) sym.moduleClass else sym
 
       for (x <- safeInfo(packageClassOrSelf(root)).decls) {
+        // println(x)
         if (x == root) ()
         else if (x.hasPackageFlag) walkTopLevels(x)
         else if (x.owner != root) { // exclude package class members

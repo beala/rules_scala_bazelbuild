@@ -21,10 +21,13 @@ public class CompileOptions {
   final public String resourceStripPrefix;
   final public String[] resourceJars;
   final public String[] classpathResourceFiles;
+  final public String[] depJars;
+  final public String[] depTargets;
   final public String[] directJars;
   final public String[] directTargets;
   final public String[] indirectJars;
   final public String[] indirectTargets;
+  final public String[] unusedJarsWhitelist;
   final public String dependencyAnalyzerMode;
   final public String currentTarget;
   final public String statsfile;
@@ -58,10 +61,13 @@ public class CompileOptions {
     resourceJars = getCommaList(argMap, "ResourceJars");
     classpathResourceFiles = getCommaList(argMap, "ClasspathResourceSrcs");
 
+    depJars = getCommaList(argMap, "DepJars");
+    depTargets = getCommaList(argMap, "DepTargets");
     directJars = getCommaList(argMap, "DirectJars");
     directTargets = getCommaList(argMap, "DirectTargets");
     indirectJars = getCommaList(argMap, "IndirectJars");
     indirectTargets = getCommaList(argMap, "IndirectTargets");
+    unusedJarsWhitelist = getCommaList(argMap, "UnusedJarsWhitelist");
 
     dependencyAnalyzerMode = getOrElse(argMap, "DependencyAnalyzerMode", "off");
     currentTarget = getOrElse(argMap, "CurrentTarget", "NA");

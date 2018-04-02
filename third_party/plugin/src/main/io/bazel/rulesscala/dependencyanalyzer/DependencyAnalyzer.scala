@@ -17,25 +17,33 @@ class DependencyAnalyzer(val global: Global) extends Plugin {
     "Analyzes the used dependencies and fails the compilation " +
       "if they are not explicitly used as direct dependencies (only declared transitively)"
   val components = List[PluginComponent](Component)
+  val scalaRulesJavaJarPattern = """^.*_java(-hjar|-ijar)?.jar$""".r
 
   var indirect: Map[String, String] = Map.empty
   var direct: Map[String, String] = Map.empty
+  var dep: Map[String, String] = Map.empty
   var analyzerMode: String = "error"
   var directJars: Seq[String] = Seq.empty
+  var depJars: Seq[String] = Seq.empty
+  var unusedJarsWhitelist: Seq[String] = Seq.empty
   var currentTarget: String = "NA"
 
   override def processOptions(options: List[String], error: (String) => Unit): Unit = {
     var indirectJars: Seq[String] = Seq.empty
     var indirectTargets: Seq[String] = Seq.empty
     var directTargets: Seq[String] = Seq.empty
+    var depTargets: Seq[String] = Seq.empty
 
     for (option <- options) {
       option.split(":").toList match {
+        case "current-target" :: target => currentTarget = target.map(_.replace(";", ":")).head
+        case "dep-jars" :: data => depJars = data
+        case "dep-targets" :: data => depTargets = data.map(_.replace(";", ":"))
         case "direct-jars" :: data => directJars = data
         case "direct-targets" :: data => directTargets = data.map(_.replace(";", ":"))
         case "indirect-jars" :: data => indirectJars = data
         case "indirect-targets" :: data => indirectTargets = data.map(_.replace(";", ":"))
-        case "current-target" :: target => currentTarget = target.map(_.replace(";", ":")).head
+        case "unused-jars-whitelist" :: data => unusedJarsWhitelist = data
         case "mode" :: mode => analyzerMode = mode.head
         case unknown :: _ => error(s"unknown param $unknown")
         case Nil =>
@@ -43,6 +51,7 @@ class DependencyAnalyzer(val global: Global) extends Plugin {
     }
     indirect = indirectJars.zip(indirectTargets).toMap
     direct = directJars.zip(directTargets).toMap
+    dep = depJars.zip(depTargets).toMap
   }
 
   private object Component extends PluginComponent {
@@ -68,14 +77,25 @@ class DependencyAnalyzer(val global: Global) extends Plugin {
 
       private def warnOnUnusedTargetsFoundIn(usedJars: Set[AbstractFile]) = {
         val usedJarPaths = usedJars.map(_.path)
+
+        def isUnused(jarPath: String): Boolean = {
+          !usedJarPaths.contains(jarPath) &&
+            !unusedJarsWhitelist.contains(jarPath) &&
+            // This is a hacky way to tell if the jar we are using comes from a rules_scala scala_<x> rules
+            // that contained both java and scala sources. For unused deps purposes, the resulting scala and
+            // java jars should be treated as a single jar. The user cannot remove the java jar without removing
+            // the sources.
+            !scalaRulesJavaJarPattern.unapplySeq(jarPath).isDefined
+        }
+
         for {
-          directJar <- direct.keys if !usedJarPaths.contains(directJar)
-          target <- direct.get(directJar)
+          directJar <- dep.keys
+          target <- dep.get(directJar) if isUnused(directJar)
         } {
           val jarFileName = Paths.get(directJar).getFileName
           // TODO: Can we get the correct jar label here?
           val errorMessage =
-            s"""${RESET}${MAGENTA}${currentTarget} depends on '${target}' which depends on '${jarFileName}', but is not used.${RESET}
+            s"""${RESET}${MAGENTA}${currentTarget} depends on '${target}' (${jarFileName}), but is not used.${RESET}
                |You can use the following buildozer command to remove it:
                |buildozer 'remove deps ${target}' ${currentTarget}""".stripMargin
 

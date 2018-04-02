@@ -195,21 +195,33 @@ class ScalacProcessor implements Processor {
     return !"off".equals(mode);
   }
 
+  private static String formatPluginParams(String paramKey, String[] paramValue) {
+    String formattedParameter = "";
+
+    if (paramValue.length > 0) {
+      formattedParameter = paramKey + String.join(":", paramValue);
+    }
+    return formattedParameter;
+  }
+
   private static String[] getPluginParamsFrom(CompileOptions ops) {
     String[] pluginParams;
 
     if (isModeEnabled(ops.dependencyAnalyzerMode)) {
       String[] indirectTargets = encodeBazelTargets(ops.indirectTargets);
+      String[] depTargets = encodeBazelTargets(ops.depTargets);
       String[] directTargets = encodeBazelTargets(ops.directTargets);
       String currentTarget = encodeBazelTarget(ops.currentTarget);
-
       String[] pluginParamsInUse = {
-              "-P:dependency-analyzer:direct-jars:" + String.join(":", ops.directJars),
-              "-P:dependency-analyzer:direct-targets:" + String.join(":", directTargets),
-              "-P:dependency-analyzer:indirect-jars:" + String.join(":", ops.indirectJars),
-              "-P:dependency-analyzer:indirect-targets:" + String.join(":", indirectTargets),
-              "-P:dependency-analyzer:mode:" + ops.dependencyAnalyzerMode,
               "-P:dependency-analyzer:current-target:" + currentTarget,
+              formatPluginParams("-P:dependency-analyzer:dep-jars:", ops.depJars),
+              formatPluginParams("-P:dependency-analyzer:dep-targets:", depTargets),
+              formatPluginParams("-P:dependency-analyzer:direct-jars:", ops.directJars),
+              formatPluginParams("-P:dependency-analyzer:direct-targets:", directTargets),
+              formatPluginParams("-P:dependency-analyzer:indirect-jars:", ops.indirectJars),
+              formatPluginParams("-P:dependency-analyzer:indirect-targets:", indirectTargets),
+              formatPluginParams("-P:dependency-analyzer:unused-jars-whitelist:", ops.unusedJarsWhitelist),
+              "-P:dependency-analyzer:mode:" + ops.dependencyAnalyzerMode,
       };
       pluginParams = pluginParamsInUse;
     } else {

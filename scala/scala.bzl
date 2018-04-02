@@ -162,6 +162,8 @@ def _compile(ctx, cjars, dep_srcjars, buildijar, transitive_compile_jars, labels
         plugins = depset(transitive = [plugins, dep_plugin.files])
         dependency_analyzer_plugin_jars = ctx.files._dependency_analyzer_plugin
         compiler_classpath_jars = transitive_compile_jars
+        foo = collect_jars(ctx.attr.deps).compile_jars
+        unused_deps_whitelist = collect_jars(ctx.attr.unused_deps_whitelist).compile_jars
 
         unused_deps_whitelist = _join_path(ctx.attr.unused_deps_whitelist)
         dep_jars = _join_path(foo)
@@ -174,7 +176,7 @@ def _compile(ctx, cjars, dep_srcjars, buildijar, transitive_compile_jars, labels
         current_target = str(ctx.label)
 
         optional_scalac_args = """
-UnusedDepsWhitelist: {unused_deps_whitelist}
+UnusedJarsWhitelist: {unused_jars_whitelist}
 DepJars: {dep_jars}
 DepTargets: {dep_targets}
 DirectJars: {direct_jars}
@@ -183,8 +185,8 @@ IndirectJars: {indirect_jars}
 IndirectTargets: {indirect_targets}
 CurrentTarget: {current_target}
         """.format(
-              unused_deps_whitelist=unused_deps_whitelist,
-              deps_jars=dep_jars,
+              unused_jars_whitelist=unused_jars_whitelist,
+              dep_jars=dep_jars,
               dep_targets=dep_targets,
               direct_jars=direct_jars,
               direct_targets=direct_targets,
@@ -1303,6 +1305,7 @@ def scala_specs2_junit_test(name, **kwargs):
   scala_junit_test(
    name = name,
    deps = specs2_junit_dependencies() + kwargs.pop("deps",[]),
+   unused_deps_whitelist = specs2_junit_dependencies() + kwargs.pop("unused_deps_whitelist",[]),
    suite_label = Label("//src/java/io/bazel/rulesscala/specs2:specs2_test_discovery"),
    suite_class = "io.bazel.rulesscala.specs2.Specs2DiscoveredTestSuite",
    **kwargs)

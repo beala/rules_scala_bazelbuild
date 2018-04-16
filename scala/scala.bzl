@@ -164,16 +164,15 @@ def _compile(ctx, cjars, dep_srcjars, buildijar, transitive_compile_jars, labels
         dependency_analyzer_plugin_jars = ctx.files._dependency_analyzer_plugin
         compiler_classpath_jars = transitive_compile_jars
         foo = collect_jars(ctx.attr.deps).compile_jars
-        unused_deps_whitelist = collect_jars(ctx.attr.unused_deps_whitelist).compile_jars
 
-        unused_deps_whitelist = _join_path(ctx.attr.unused_deps_whitelist)
+        unused_jars_whitelist = _join_path(collect_jars(ctx.attr.unused_deps_whitelist).compile_jars)
         dep_jars = _join_path(foo)
-        dep_targets = _join_path(foo)
+        dep_targets = ",".join([labels[j.path] for j in foo])
         direct_jars = _join_path(cjars.to_list())
-        direct_targets = _join_path(cjars.to_list())
+        direct_targets = ",".join([labels[j.path] for j in cjars.to_list()])
         transitive_cjars_list = transitive_compile_jars.to_list()
         indirect_jars = _join_path(transitive_cjars_list)
-        indirect_targets = _join_path(transitive_cjars_list)
+        indirect_targets = ",".join([labels[j.path] for j in transitive_cjars_list])
         current_target = str(ctx.label)
 
         optional_scalac_args = """

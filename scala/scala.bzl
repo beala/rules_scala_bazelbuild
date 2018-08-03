@@ -1159,9 +1159,9 @@ java_import(
 def scala_repositories():
   native.new_http_archive(
     name = "scala",
-    strip_prefix = "scala-2.11.11",
-    sha256 = "12037ca64c68468e717e950f47fc77d5ceae5e74e3bdca56f6d02fd5bfd6900b",
-    url = "https://downloads.lightbend.com/scala/2.11.11/scala-2.11.11.tgz",
+    strip_prefix = "scala-2.11.12",
+    sha256 = "b11d7d33699ca4f60bc3b2b6858fd953e3de2b8522c943f4cda4b674316196a8",
+    url = "https://downloads.lightbend.com/scala/2.11.12/scala-2.11.12.tgz",
     build_file_content = SCALA_BUILD_FILE,
   )
 

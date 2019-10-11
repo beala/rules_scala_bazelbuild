@@ -20,6 +20,7 @@ load(
     "first_non_empty",
     "get_scalac_provider",
     "get_unused_dependency_checker_mode",
+    "get_zinc_mode",
     "scala_binary_common",
     "write_executable",
     "write_java_wrapper",
@@ -40,6 +41,7 @@ def _scala_test_impl(ctx):
     scalac_provider = get_scalac_provider(ctx)
 
     unused_dependency_checker_mode = get_unused_dependency_checker_mode(ctx)
+    zinc_mode = get_zinc_mode(ctx)
     unused_dependency_checker_ignored_targets = [
         target.label
         for target in scalac_provider.default_classpath +

@@ -811,6 +811,9 @@ def get_unused_dependency_checker_mode(ctx):
     else:
         return ctx.toolchains["@io_bazel_rules_scala//scala:toolchain_type"].unused_dependency_checker_mode
 
+def get_zinc_mode(ctx):
+    return ctx.toolchains["@io_bazel_rules_scala//scala:toolchain_type"].zinc
+
 # Common code shared by all scala binary implementations.
 def scala_binary_common(
         ctx,

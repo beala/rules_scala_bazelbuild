@@ -134,3 +134,20 @@ resolve_deps = {
         allow_files = False,
     ),
 }
+
+zinc_compiler = {
+    "deps_direct": attr.string(default = "error"),
+    "deps_used": attr.string(default = "error"),
+    "_deps_worker": attr.label(
+        default = "@rules_scala_annex//src/main/scala/higherkindness/rules_scala/workers/deps",
+        allow_files = True,
+        executable = True,
+        cfg = "host",
+    ),
+    "_compile_worker": attr.label(
+        default = "@rules_scala_annex//src/main/scala/higherkindness/rules_scala/workers/zinc/compile",
+        allow_files = True,
+        executable = True,
+        cfg = "host",
+    ),
+}

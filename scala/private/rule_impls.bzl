@@ -590,15 +590,15 @@ def _path_is_absolute(path):
 
     return False
 
-def _runfiles_root(ctx):
+def get_runfiles_root(ctx):
     return "${TEST_SRCDIR}/%s" % ctx.workspace_name
 
-def _java_bin(ctx):
+def get_java_bin(ctx):
     java_path = str(ctx.attr._java_runtime[java_common.JavaRuntimeInfo].java_executable_runfiles_path)
     if _path_is_absolute(java_path):
         javabin = java_path
     else:
-        runfiles_root = _runfiles_root(ctx)
+        runfiles_root = get_runfiles_root(ctx)
         javabin = "%s/%s" % (runfiles_root, java_path)
     return javabin
 
@@ -621,119 +621,15 @@ JAVA_EXEC_TO_USE=${{REAL_EXTERNAL_JAVA_BIN:-$DEFAULT_JAVABIN}}
 """.format(
             preamble = wrapper_preamble,
             exec_str = exec_str,
-            javabin = _java_bin(ctx),
+            javabin = get_java_bin(ctx),
             args = args,
         ),
         is_executable = True,
     )
     return wrapper
 
-def _jar_path_based_on_java_bin(ctx):
-    java_bin = _java_bin(ctx)
-    jar_path = java_bin.rpartition("/")[0] + "/jar"
-    return jar_path
-
-def write_executable(ctx, executable, rjars, main_class, jvm_flags, wrapper, use_jacoco):
-    if (_is_windows(ctx)):
-        return write_executable_windows(ctx, executable, rjars, main_class, jvm_flags, wrapper, use_jacoco)
-    else:
-        return write_executable_non_windows(ctx, executable, rjars, main_class, jvm_flags, wrapper, use_jacoco)
-
-def write_executable_windows(ctx, executable, rjars, main_class, jvm_flags, wrapper, use_jacoco):
-    # NOTE: `use_jacoco` is currently ignored on Windows.
-    # TODO: tests coverage support for Windows
-    classpath = ";".join(
-        [("external/%s" % (j.short_path[3:]) if j.short_path.startswith("../") else j.short_path) for j in rjars.to_list()],
-    )
-    jvm_flags_str = ";".join(jvm_flags)
-    java_for_exe = str(ctx.attr._java_runtime[java_common.JavaRuntimeInfo].java_executable_exec_path)
-
-    cpfile = ctx.actions.declare_file("%s.classpath" % ctx.label.name)
-    ctx.actions.write(cpfile, classpath)
-
-    ctx.actions.run(
-        outputs = [executable],
-        inputs = [cpfile],
-        executable = ctx.attr._exe.files_to_run.executable,
-        arguments = [executable.path, ctx.workspace_name, java_for_exe, main_class, cpfile.path, jvm_flags_str],
-        mnemonic = "ExeLauncher",
-        progress_message = "Creating exe launcher",
-    )
-    return []
-
-def write_executable_non_windows(ctx, executable, rjars, main_class, jvm_flags, wrapper, use_jacoco):
-    template = ctx.attr._java_stub_template.files.to_list()[0]
-
-    jvm_flags = " ".join(
-        [ctx.expand_location(f, ctx.attr.data) for f in jvm_flags],
-    )
-
-    javabin = "export REAL_EXTERNAL_JAVA_BIN=${JAVABIN};JAVABIN=%s/%s" % (
-        _runfiles_root(ctx),
-        wrapper.short_path,
-    )
-
-    if use_jacoco and _coverage_replacements_provider.is_enabled(ctx):
-        classpath = ctx.configuration.host_path_separator.join(
-            ["${RUNPATH}%s" % (j.short_path) for j in rjars.to_list() + ctx.files._jacocorunner],
-        )
-        jacoco_metadata_file = ctx.actions.declare_file(
-            "%s.jacoco_metadata.txt" % ctx.attr.name,
-            sibling = executable,
-        )
-        ctx.actions.write(jacoco_metadata_file, "\n".join([
-            jar.short_path.replace("../", "external/")
-            for jar in rjars.to_list()
-        ]))
-        ctx.actions.expand_template(
-            template = template,
-            output = executable,
-            substitutions = {
-                "%classpath%": "\"%s\"" % classpath,
-                "%javabin%": javabin,
-                "%jarbin%": _jar_path_based_on_java_bin(ctx),
-                "%jvm_flags%": jvm_flags,
-                "%needs_runfiles%": "",
-                "%runfiles_manifest_only%": "",
-                "%workspace_prefix%": ctx.workspace_name + "/",
-                "%java_start_class%": "com.google.testing.coverage.JacocoCoverageRunner",
-                "%set_jacoco_metadata%": "export JACOCO_METADATA_JAR=\"$JAVA_RUNFILES/{}/{}\"".format(ctx.workspace_name, jacoco_metadata_file.short_path),
-                "%set_jacoco_main_class%": """export JACOCO_MAIN_CLASS={}""".format(main_class),
-                "%set_jacoco_java_runfiles_root%": """export JACOCO_JAVA_RUNFILES_ROOT=$JAVA_RUNFILES/{}/""".format(ctx.workspace_name),
-                "%set_java_coverage_new_implementation%": """export JAVA_COVERAGE_NEW_IMPLEMENTATION=YES""",
-            },
-            is_executable = True,
-        )
-        return [jacoco_metadata_file]
-    else:
-        # RUNPATH is defined here:
-        # https://github.com/bazelbuild/bazel/blob/0.4.5/src/main/java/com/google/devtools/build/lib/bazel/rules/java/java_stub_template.txt#L227
-        classpath = ctx.configuration.host_path_separator.join(
-            ["${RUNPATH}%s" % (j.short_path) for j in rjars.to_list()],
-        )
-        ctx.actions.expand_template(
-            template = template,
-            output = executable,
-            substitutions = {
-                "%classpath%": "\"%s\"" % classpath,
-                "%java_start_class%": main_class,
-                "%javabin%": javabin,
-                "%jarbin%": _jar_path_based_on_java_bin(ctx),
-                "%jvm_flags%": jvm_flags,
-                "%needs_runfiles%": "",
-                "%runfiles_manifest_only%": "",
-                "%set_jacoco_metadata%": "",
-                "%set_jacoco_main_class%": "",
-                "%set_jacoco_java_runfiles_root%": "",
-                "%workspace_prefix%": ctx.workspace_name + "/",
-                "%set_java_coverage_new_implementation%": """export JAVA_COVERAGE_NEW_IMPLEMENTATION=NO""",
-            },
-            is_executable = True,
-        )
-        return []
-
 def declare_executable(ctx):
-    if (_is_windows(ctx)):
+    if (is_windows(ctx)):
         return ctx.actions.declare_file("%s.exe" % ctx.label.name)
     else:
         return ctx.actions.declare_file(ctx.label.name)
@@ -885,5 +781,5 @@ def _jacoco_offline_instrument(ctx, input_jar):
 def _jacoco_offline_instrument_format_each(in_out_pair):
     return (["%s=%s" % (in_out_pair[0].path, in_out_pair[1].path)])
 
-def _is_windows(ctx):
+def is_windows(ctx):
     return ctx.configuration.host_path_separator == ";"
